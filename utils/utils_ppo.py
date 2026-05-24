@@ -169,11 +169,11 @@ class PPOActorNetwork(nn.Module):
         )
         self.alpha = nn.Sequential(
             nn.Linear(200, action_dim),
-            nn.Softplus()  # Ensure alpha > 0
+            nn.Softplus()
         )
         self.beta = nn.Sequential(
             nn.Linear(200, action_dim),
-            nn.Softplus()  # Ensure beta > 0
+            nn.Softplus()
         )
 
     def forward(self, vision, proprioception, internal_state, heat_sensor=None, deterministic=False, evaluate_actions=None):
@@ -189,6 +189,7 @@ class PPOActorNetwork(nn.Module):
 
         if evaluate_actions is not None:
             # Training mode: evaluate log_prob of given actions
+            evaluate_actions = (evaluate_actions + 1.0) / 2.0  # Scale from [-1, 1] to [0, 1]
             log_prob = dist.log_prob(evaluate_actions).sum(-1)
             entropy = dist.entropy().sum(-1)
             return log_prob, entropy
@@ -196,11 +197,11 @@ class PPOActorNetwork(nn.Module):
             # Rollout mode: sample actions
             if not deterministic:
                 action = dist.rsample()
-                action = 2 * action - 1 # Rescalqe from [0, 1] to [-1, 1]
             else:
                 action = dist.mode
-                action = 2 * action - 1 # Rescale from [0, 1] to [-1, 1]
-            return action, dist.log_prob(action).sum(-1), dist.entropy().sum(-1)
+            # Scale action
+            env_action = action * 2.0 - 1.0
+            return env_action, dist.log_prob(action).sum(-1), dist.entropy().sum(-1)
 
 
 class PPOCriticNetwork(nn.Module):

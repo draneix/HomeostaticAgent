@@ -1,6 +1,7 @@
 import datetime as dt
 from dataclasses import asdict
 
+import numpy as np
 import mlflow
 import torch
 from torch.optim import AdamW
@@ -58,6 +59,7 @@ def train_ppo():
         for iterations in tqdm(range(cfg.total_updates)):
             # Rollout phase
             agent.eval()
+            list_iterations_episode_length = []
             for _ in range(cfg.rollout_steps):
                 # Get next state and store it buffer
                 with torch.no_grad():
@@ -66,6 +68,13 @@ def train_ppo():
                 log_prob = log_prob.detach().cpu().numpy()
                 entropy = entropy.detach().cpu().numpy()
                 value = value.detach().cpu().numpy()
+
+                # Check for NaN values in actions
+                if np.any(np.isnan(actions)) or np.any(np.isinf(actions)):
+                    logger.error(f"NaN/Inf detected in actions at iteration {iterations}, step {_}!")
+                    logger.error(f"  actions sample: {actions[0]}")
+                    raise RuntimeError("NaN/Inf detected in actions")
+
                 next_obs, rewards, terminations, truncations, infos = env.step(actions)
                 done = terminations | truncations
                 add_to_replay_buffer(replay_buffer, obs, actions, log_prob, rewards, done, value)
@@ -85,6 +94,7 @@ def train_ppo():
                     for i in range(cfg.num_workers):
                         if infos["_episode"][i]:
                             episodes_finished += 1
+                            list_iterations_episode_length.append(infos["episode"]["l"][i])
                             logger.info(f"DEBUG Episode {episodes_finished} Worker {i}:")
                             logger.info(f"  food_consumed in infos: {infos.get('food_consumed', 'MISSING')}")
                             logger.info(f"  water_consumed in infos: {infos.get('water_consumed', 'MISSING')}")
@@ -213,6 +223,15 @@ def train_ppo():
                     # Total loss
                     loss = policy_loss - cfg.ent_coef * entropy_loss + cfg.vf_coef * value_loss
 
+                    # Check for NaN before backprop
+                    if torch.isnan(loss) or torch.isinf(loss):
+                        logger.error(f"NaN/Inf detected in loss at iteration {iterations}, epoch {epoch}!")
+                        logger.error(f"  policy_loss: {policy_loss}, entropy_loss: {entropy_loss}, value_loss: {value_loss}")
+                        logger.error(f"  new_log_probs sample: {new_log_probs[:3]}")
+                        logger.error(f"  new_values sample: {new_values[:3]}")
+                        logger.error(f"  batch_advantages sample: {batch_advantages[:3]}")
+                        raise RuntimeError("NaN/Inf detected in loss")
+
                     # Backpropagation
                     optimizer.zero_grad()
                     loss.backward()
@@ -232,6 +251,7 @@ def train_ppo():
             avg_policy_loss = total_policy_loss / num_updates if num_updates > 0 else 0
             avg_value_loss = total_value_loss / num_updates if num_updates > 0 else 0
             avg_entropy = total_entropy_loss / num_updates if num_updates > 0 else 0
+            avg_episode_length = sum(list_iterations_episode_length) / len(list_iterations_episode_length) if list_iterations_episode_length else 0
 
             mlflow.log_metrics(
                 {
@@ -241,6 +261,8 @@ def train_ppo():
                     "train/learning_rate": scheduler.get_last_lr()[0],
                     "train/kl_divergence": kl_div.item(),
                     "global_step": global_step,
+                    "train/average_episode_length": avg_episode_length,
+                    "train/episodes_finished": episodes_finished,
                 },
                 step=iterations
             )
