@@ -7,7 +7,7 @@ import numpy as np
 from gymnasium.core import WrapperActType
 from gymnasium.spaces import Box, Dict
 from gymnasium.vector.utils import create_empty_array
-from gymnasium.wrappers import RecordEpisodeStatistics
+from gymnasium.wrappers import RecordEpisodeStatistics, RescaleAction
 from gymnasium.wrappers.utils import create_zero_array
 
 from envs.ant_env import HomeostaticAntEnv
@@ -85,6 +85,7 @@ def create_env(config, multiple_env=False):
     def _base_env_setup():
         env = HomeostaticAntEnv(config)
         env = RecordEpisodeStatistics(env)
+        env = RescaleAction(env, 0, 1)
         if config.frame_stack_key:
             env = CustomFrameStackObservation(
                 env, 

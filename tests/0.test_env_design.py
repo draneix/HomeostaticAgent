@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 
 from configs.config_env import EnvConfig
 from envs.ant_env import HomeostaticAntEnv
@@ -19,6 +20,8 @@ def test_env_design():
 
             # Step the environment
             obs, reward, terminated, truncated, info = env.step(action)
+            if info["timestep"] % 100 == 0:
+                print(f"Timestep: {info['timestep']} | Hunger: {info['hunger']:.3f} | Thirst: {info['thirst']:.3f} | Reward: {reward} | Mean Action: {np.abs(action).mean():.3f}")
 
             # Extract the POV image - RGB part only for visualization
             pov_image = info["vision"]

@@ -48,8 +48,6 @@ def test_agent_training():
                 actions, log_prob, entropy, value = agent(vision, proprio, internal)
 
             actions = actions.detach().cpu().numpy().squeeze(0)
-            # Rescale actions from [0, 1] to [-1, 1]
-            actions = 2 * actions - 1
             log_prob = log_prob.detach().cpu().numpy()
             entropy = entropy.detach().cpu().numpy()
             value = value.detach().cpu().numpy()
@@ -86,13 +84,27 @@ def test_agent_training():
             cv2.imshow("POV Perspective", pov_bgr)
             cv2.imshow("Global Environment", env_bgr)
 
-            # Log resource consumption every 100 steps
-            if step_count % 100 == 0:
-                print(f"Step {step_count}/{total_steps} | Episode {episode_count}")
+            if infos["timestep"] % 100 == 0:
+                print(f"Step: {step_count} | Reward: {rewards:.3f} | Mean Action: {np.abs(actions).mean():.3f}")
+                print(f"Hunger: {infos['hunger']:.3f}, Thirst: {infos['thirst']:.3f}")
                 print(f"  Food Consumed: {infos['food_consumed']}")
                 print(f"  Water Consumed: {infos['water_consumed']}")
-                print(f"  Hunger: {infos['hunger']:.3f}, Thirst: {infos['thirst']:.3f}")
-                print(f"  Reward: {rewards:.3f}")
+                print("-" * 30)
+            if infos["food_consumed"] > 0 or infos["water_consumed"] > 0:
+                print(f"Step: {step_count} | Reward: {rewards:.3f} | Mean Action: {np.abs(actions).mean():.3f}")
+                print(f"Hunger: {infos['hunger']:.3f}, Thirst: {infos['thirst']:.3f}")
+                print(f"  Food Consumed: {infos['food_consumed']}")
+                print(f"  Water Consumed: {infos['water_consumed']}")
+                print("-" * 30)
+                break
+
+            # # Log resource consumption every 100 steps
+            # if step_count % 100 == 0:
+            #     print(f"Step {step_count}/{total_steps} | Episode {episode_count}")
+            #     print(f"  Food Consumed: {infos['food_consumed']}")
+            #     print(f"  Water Consumed: {infos['water_consumed']}")
+            #     print(f"  Hunger: {infos['hunger']:.3f}, Thirst: {infos['thirst']:.3f}")
+            #     print(f"  Reward: {rewards:.3f}")
 
             # Check for quit
             if cv2.waitKey(1) & 0xFF == ord("q"):

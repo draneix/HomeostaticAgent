@@ -5,7 +5,7 @@ from configs.config_ppo import PPOConfig
 
 def main():
     cfg = PPOConfig()
-    env = create_env(cfg, async_env=True)
+    env = create_env(cfg, multiple_env=True)
     replay_buffer = create_replay_buffer(cfg)
     agent = HomeostaticPPO(cfg)
     agent.to(cfg.device)

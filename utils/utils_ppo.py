@@ -13,8 +13,8 @@ from utils.vision_encoder import VisionEncoder
 def create_replay_buffer(config):
     replay_buffer = TensorDictReplayBuffer(
         storage=ListStorage(device=config.device),
-        # sampler=SamplerWithoutReplacement(),
-        batch_size=config.minibatch_size,
+        sampler=SamplerWithoutReplacement(),
+        # batch_size=config.minibatch_size,
     )
     return replay_buffer
 
@@ -87,7 +87,6 @@ def compute_gae_from_buffer(rewards, values, next_obs, dones, agent, gamma=0.99,
         nextnonterminal = 1.0 - dones[t]
         if t == rollout_steps - 1:
             print(f"[DEBUG GAE] t={t}: nextvalues shape={nextvalues.shape}, nextnonterminal shape={nextnonterminal.shape}, values[t] shape={values[t].shape}")
- 
             
         delta = rewards[t] + gamma * nextvalues * nextnonterminal - values[t]
         advantages[t] = lastgaelam = delta + gamma * lam * nextnonterminal * lastgaelam
@@ -189,7 +188,6 @@ class PPOActorNetwork(nn.Module):
 
         if evaluate_actions is not None:
             # Training mode: evaluate log_prob of given actions
-            evaluate_actions = (evaluate_actions + 1.0) / 2.0  # Scale from [-1, 1] to [0, 1]
             log_prob = dist.log_prob(evaluate_actions).sum(-1)
             entropy = dist.entropy().sum(-1)
             return log_prob, entropy
@@ -199,9 +197,7 @@ class PPOActorNetwork(nn.Module):
                 action = dist.rsample()
             else:
                 action = dist.mode
-            # Scale action
-            env_action = action * 2.0 - 1.0
-            return env_action, dist.log_prob(action).sum(-1), dist.entropy().sum(-1)
+            return action, dist.log_prob(action).sum(-1), dist.entropy().sum(-1)
 
 
 class PPOCriticNetwork(nn.Module):
@@ -230,41 +226,3 @@ class PPOCriticNetwork(nn.Module):
         else:
             x = torch.cat([vision, proprioception, internal_state], dim=-1)
         return self.net(x)
-
-
-def calculate_returns(rewards, discount_factor, normalize = True):
-    
-    returns = []
-    R = 0
-    
-    for r in reversed(rewards):
-        R = r + R * discount_factor
-        returns.insert(0, R)
-        
-    returns = torch.tensor(returns)
-    
-    if normalize:
-        
-        returns = (returns - returns.mean()) / returns.std()
-        
-    return returns
-
-def calculate_advantages(rewards, values, discount_factor, trace_decay, normalize = True):
-    
-    advantages = []
-    advantage = 0
-    next_value = 0
-    
-    for r, v in zip(reversed(rewards), reversed(values)):
-        td_error = r + next_value * discount_factor - v
-        advantage = td_error + advantage * discount_factor * trace_decay
-        next_value = v
-        advantages.insert(0, advantage)
-        
-    advantages = torch.tensor(advantages)
-    
-    if normalize:
-        advantages = (advantages - advantages.mean()) / advantages.std()
-        
-    return advantages
-

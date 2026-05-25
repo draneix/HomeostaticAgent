@@ -28,7 +28,7 @@ def train_ppo():
 
     # Create mlflow
     mlflow.set_tracking_uri("sqlite:///runs.db")
-    mlflow.set_experiment("HomoeostaticAnt")
+    mlflow.set_experiment("HomoeostaticAgent")
 
     # Get config
     cfg = PPOConfig()
@@ -95,11 +95,6 @@ def train_ppo():
                         if infos["_episode"][i]:
                             episodes_finished += 1
                             list_iterations_episode_length.append(infos["episode"]["l"][i])
-                            logger.info(f"DEBUG Episode {episodes_finished} Worker {i}:")
-                            logger.info(f"  food_consumed in infos: {infos.get('food_consumed', 'MISSING')}")
-                            logger.info(f"  water_consumed in infos: {infos.get('water_consumed', 'MISSING')}")
-                            logger.info(f"  hunger in infos: {infos.get('hunger', 'MISSING')}")
-                            logger.info(f"  All keys in infos: {infos.keys()}")
                             mlflow.log_metrics(
                                 {
                                     "episode/return": infos["episode"]["r"][i],
@@ -203,9 +198,9 @@ def train_ppo():
                                 batch_obs["internal_state"], deterministic=True,
                                 evaluate_actions=batch_actions
                             )
-                        logger.info(f"[DEBUG] Stochastic log_probs sample: {new_log_probs[0:3]}")
-                        logger.info(f"[DEBUG] Deterministic log_probs sample: {det_log_probs[0:3]}")
-                        logger.info(f"[DEBUG] Old log_probs sample: {batch_old_log_probs[0:3]}")
+                        logger.debug(f"[DEBUG] Stochastic log_probs sample: {new_log_probs[0:3]}")
+                        logger.debug(f"[DEBUG] Deterministic log_probs sample: {det_log_probs[0:3]}")
+                        logger.debug(f"[DEBUG] Old log_probs sample: {batch_old_log_probs[0:3]}")
 
                     pg_loss1 = -batch_advantages * ratio
                     pg_loss2 = -batch_advantages * torch.clamp(ratio, 1 - cfg.clip_coef, 1 + cfg.clip_coef)
