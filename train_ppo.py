@@ -56,7 +56,7 @@ def train_ppo():
     # PPO iterations
     with mlflow.start_run(run_name="PPO Training - " + dt.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")):
         mlflow.log_params(asdict(cfg))
-        for iterations in tqdm(range(cfg.total_updates)):
+        for iterations in range(cfg.total_updates):
             # Rollout phase
             agent.eval()
             list_iterations_episode_length = []

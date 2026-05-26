@@ -9,7 +9,7 @@ class EnvConfig(BaseConfig):
     env_name: str = "HomeostaticAntEnv"
     max_steps: int = 60_000
     image_size: tuple[int, int] = (64, 64)
-    num_workers: int = 2
+    num_workers: int = 10
     frame_stack_size: int = 3
     frame_stack_key: str = "vision"
     arena_size: float = 6.0
@@ -29,8 +29,8 @@ class EnvConfig(BaseConfig):
     sweat_cooling_rate: float = 0.0 if num_heat == 0 else 0.01     # TODO: Change placeholder values
     sweat_thirst_cost: float = 0.0 if num_heat == 0 else 0.01   # TODO: Change placeholder values
     posture_drive_penalty: float = 0.0
-    movement_penalty_weight: float = 0.0 # 0.001
-    posture_penalty_weight: float = 0.0 # 0.005
+    movement_penalty_weight: float = 0.001 # 
+    posture_penalty_weight: float = 0.005 # 
     reward_scale: float = 100.0
     render_mode: str = "rgb_array"
     obs_space_dim: int = 27

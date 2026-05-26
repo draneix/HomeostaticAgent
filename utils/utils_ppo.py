@@ -13,7 +13,7 @@ from utils.vision_encoder import VisionEncoder
 def create_replay_buffer(config):
     replay_buffer = TensorDictReplayBuffer(
         storage=ListStorage(device=config.device),
-        sampler=SamplerWithoutReplacement(),
+        sampler=SamplerWithoutReplacement(shuffle=False),
         # batch_size=config.minibatch_size,
     )
     return replay_buffer

@@ -13,7 +13,7 @@ class PPOConfig(EnvConfig):
     batch_size: int = field(init=False)
     gamma: float = 0.99
     gae_lambda: float = 0.95
-    epochs: int = 5
+    epochs: int = 30
     lr_start: float = 1e-4
     lr_end: float = 1e-5
     max_grad_norm: float = 0.5
