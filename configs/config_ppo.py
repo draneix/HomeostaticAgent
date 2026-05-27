@@ -11,6 +11,8 @@ class PPOConfig(EnvConfig):
     rollout_steps: int = 2_000
     minibatch_size: int = 10_000
     batch_size: int = field(init=False)
+    frame_stack_size: int = 3
+    frame_stack_key: str = "vision"
     gamma: float = 0.99
     gae_lambda: float = 0.95
     epochs: int = 30
