@@ -1,11 +1,14 @@
 # Create environment
+import cv2
+import pandas as pd
+import torch
+from skimage.transform import resize
+import numpy as np
+
 from configs.config_ppo import PPOConfig
 from envs.ant_env import HomeostaticAntEnv
 from utils.utils_env import create_env
-import torch
 from utils.utils_ppo import HomeostaticPPO
-import cv2
-from skimage.transform import resize
 
 
 def record_ppo():
@@ -35,10 +38,21 @@ def record_ppo():
     done = False
     while not done or episode_steps < config.max_episode_steps:
         # Prepare observation
-        vision = resize(obs["vision"], (12, 64, 64), anti_aliasing=True, preserve_range=True)
+        vision = np.transpose(obs["vision"], (1, 2, 0))
+        vision = cv2.resize(vision, (64, 64), interpolation=cv2.INTER_AREA)
+        vision = np.transpose(vision, (2, 0, 1))
+        # vision = resize(
+        #     obs["vision"], (12, 64, 64), anti_aliasing=True, preserve_range=True
+        # )
         vision = torch.from_numpy(vision).unsqueeze(0).to(config.device)
-        proprioception = torch.from_numpy(obs["proprioception"]).unsqueeze(0).to(config.device, dtype=torch.float32)
-        internal_state = torch.from_numpy(obs["internal_state"]).unsqueeze(0).to(config.device)
+        proprioception = (
+            torch.from_numpy(obs["proprioception"])
+            .unsqueeze(0)
+            .to(config.device, dtype=torch.float32)
+        )
+        internal_state = (
+            torch.from_numpy(obs["internal_state"]).unsqueeze(0).to(config.device)
+        )
 
         # Get action from agent
         with torch.no_grad():
@@ -67,24 +81,37 @@ def record_ppo():
         episode_frames_env.append(env_frame)
 
         done = terminated or truncated
-        if episode_steps % 10 == 0:
+        if episode_steps % 100 == 0:
             print(f"Step: {episode_steps}", end="\r", flush=True)
     print("Episode finished")
     env.close()
 
+    # Save episode statistics
+    episode_stats = pd.DataFrame(
+        {
+            "reward": episode_reward,
+            "food_consumed": episode_food,
+            "water_consumed": episode_water,
+            "hunger": episode_hunger,
+            "thirst": episode_thirst,
+        }
+    )
+    episode_stats.to_csv("./eval/ppo/ppo_episode_stats.csv", index=False)
+
     # Save pov video
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter("./videos/ppo_pov_video.mp4", fourcc, 30, (512, 512))
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    out = cv2.VideoWriter("./evals/ppo/ppo_pov_video.mp4", fourcc, 30, (512, 512))
     for frame in episode_frames_pov:
         out.write(frame)
     out.release()
 
     # Save environment video
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter("./videos/ppo_env_video.mp4", fourcc, 30, (512, 512))
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    out = cv2.VideoWriter("./evals/ppo/ppo_env_video.mp4", fourcc, 30, (512, 512))
     for frame in episode_frames_env:
         out.write(frame)
     out.release()
+
 
 if __name__ == "__main__":
     record_ppo()
