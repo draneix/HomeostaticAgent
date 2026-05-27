@@ -4,7 +4,7 @@ from dataclasses import asdict
 import numpy as np
 import mlflow
 import torch
-from torch.optim import AdamW
+from torch.optim import Adam
 from torch.optim.lr_scheduler import LinearLR
 from tqdm.auto import tqdm
 
@@ -16,7 +16,8 @@ from utils.utils_ppo import (
     add_to_replay_buffer,
     compute_gae_from_buffer,
     create_replay_buffer,
-    reshape_trajectory
+    reshape_trajectory,
+    compute_explained_variance,
 )
 
 
@@ -44,7 +45,7 @@ def train_ppo():
     # Create agent
     agent = HomeostaticPPO(cfg)
     agent.to(cfg.device)
-    optimizer = AdamW(agent.parameters(), lr=cfg.lr_start, eps=cfg.adam_eps)
+    optimizer = Adam(agent.parameters(), lr=cfg.lr_start, eps=cfg.adam_eps)
     scheduler = LinearLR(optimizer, start_factor=1.0, end_factor=0.1, total_iters=cfg.total_updates)
     logger.info("Created PPO agent and optimizer")
 
@@ -142,6 +143,7 @@ def train_ppo():
             total_policy_loss = 0
             total_value_loss = 0
             total_entropy_loss = 0
+            total_explained_var = 0
             num_updates = 0
 
             for epoch in range(cfg.epochs):
@@ -174,6 +176,7 @@ def train_ppo():
                         evaluate_actions=batch_actions
                     )
                     new_values = new_values.squeeze(-1)
+                    total_explained_var += compute_explained_variance(new_values, batch_returns)
 
                     # Policy loss (PPO clipped surrogate objective)
                     log_ratio = new_log_probs - batch_old_log_probs
@@ -189,7 +192,7 @@ def train_ppo():
                         ratio_std = ratio.std().item()
                         logger.debug(f"[SANITY CHECK] First minibatch ratio - mean: {ratio_mean:.6f}, std: {ratio_std:.6f}")
                         if abs(ratio_mean - 1.0) > 0.01:
-                            logger.warning(f"WARNING: Ratio not close to 1.0! Check if log_probs were saved correctly.")
+                            logger.warning("WARNING: Ratio not close to 1.0! Check if log_probs were saved correctly.")
 
                         # Additional diagnostic: check log_probs consistency
                         with torch.no_grad():
@@ -247,6 +250,7 @@ def train_ppo():
             avg_value_loss = total_value_loss / num_updates if num_updates > 0 else 0
             avg_entropy = total_entropy_loss / num_updates if num_updates > 0 else 0
             avg_episode_length = sum(list_iterations_episode_length) / len(list_iterations_episode_length) if list_iterations_episode_length else 0
+            avg_explained_var = total_explained_var / num_updates if num_updates > 0 else 0
 
             mlflow.log_metrics(
                 {
@@ -258,6 +262,7 @@ def train_ppo():
                     "global_step": global_step,
                     "train/average_episode_length": avg_episode_length,
                     "train/episodes_finished": episodes_finished,
+                    "train/explained_variance": avg_explained_var,  # Add this line
                 },
                 step=iterations
             )

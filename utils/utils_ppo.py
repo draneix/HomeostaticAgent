@@ -75,7 +75,7 @@ def compute_gae_from_buffer(rewards, values, next_obs, dones, agent, gamma=0.99,
     # Convert dones to float if it's bool
     dones = dones.float() if dones.dtype == torch.bool else dones
 
-    print(f"[DEBUG GAE] rewards shape: {rewards.shape}, values shape: {values.shape}, dones shape: {dones.shape}")
+    # print(f"[DEBUG GAE] rewards shape: {rewards.shape}, values shape: {values.shape}, dones shape: {dones.shape}")
 
     # 2. Iterate backwards
     for t in reversed(range(rollout_steps)):
@@ -85,8 +85,8 @@ def compute_gae_from_buffer(rewards, values, next_obs, dones, agent, gamma=0.99,
             nextvalues = values[t + 1]
 
         nextnonterminal = 1.0 - dones[t]
-        if t == rollout_steps - 1:
-            print(f"[DEBUG GAE] t={t}: nextvalues shape={nextvalues.shape}, nextnonterminal shape={nextnonterminal.shape}, values[t] shape={values[t].shape}")
+        # if t == rollout_steps - 1:
+        #     print(f"[DEBUG GAE] t={t}: nextvalues shape={nextvalues.shape}, nextnonterminal shape={nextnonterminal.shape}, values[t] shape={values[t].shape}")
             
         delta = rewards[t] + gamma * nextvalues * nextnonterminal - values[t]
         advantages[t] = lastgaelam = delta + gamma * lam * nextnonterminal * lastgaelam
@@ -104,6 +104,16 @@ def reshape_trajectory(traj_dict, rollout_steps, num_workers):
         else:
             reshaped[key] = value.reshape(rollout_steps, num_workers, *value.shape[1:])
     return reshaped
+
+
+def compute_explained_variance(predicted_values, returns):
+    """Compute explained variance: 1 - (var(returns - pred) / var(returns))"""
+    var_returns = torch.var(returns)
+    residuals = returns - predicted_values
+    var_residuals = torch.var(residuals)
+    if var_returns.item() < 1e-10:
+        return 0.0
+    return (1 - var_residuals / var_returns).item()
 
 
 class HomeostaticPPO(nn.Module):
