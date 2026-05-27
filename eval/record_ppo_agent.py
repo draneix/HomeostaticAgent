@@ -38,7 +38,7 @@ def record_ppo():
     episode_thirst = []
 
     done = False
-    while not done and episode_steps < 1_000:
+    while not done and episode_steps < config.max_steps:
         # Prepare observation
         vision = np.transpose(obs["vision"], (1, 2, 0))
         vision = cv2.resize(vision, (64, 64), interpolation=cv2.INTER_AREA)
