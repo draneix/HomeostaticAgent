@@ -24,8 +24,10 @@ def record_ppo():
     agent.load_state_dict(checkpoint)
     agent.eval()
 
-    episode_frames_pov = []
-    episode_frames_env = []
+    # Set up video recorder
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    out_pov = cv2.VideoWriter("./eval/ppo/ppo_pov_video.mp4", fourcc, 30, (512, 512))
+    out_env = cv2.VideoWriter("./eval/ppo/ppo_env_video.mp4", fourcc, 30, (512, 512))
 
     episode_reward = []
     episode_food = []
@@ -36,7 +38,7 @@ def record_ppo():
     episode_thirst = []
 
     done = False
-    while not done or episode_steps < config.max_episode_steps:
+    while not done and episode_steps < 1_000:
         # Prepare observation
         vision = np.transpose(obs["vision"], (1, 2, 0))
         vision = cv2.resize(vision, (64, 64), interpolation=cv2.INTER_AREA)
@@ -69,16 +71,9 @@ def record_ppo():
         episode_thirst.append(info["thirst"])
         episode_steps += 1
 
-        # Capture frames from info
-        pov_frame = info["vision"]  # RGB frame
-        # Convert to BGR for OpenCV and resize if needed
-        pov_frame = cv2.cvtColor(pov_frame, cv2.COLOR_RGB2BGR)
-        episode_frames_pov.append(pov_frame)
-
-        env_frame = info["environment"]  # RGB frame with HUD
-        # Convert to BGR for OpenCV
-        env_frame = cv2.cvtColor(env_frame, cv2.COLOR_RGB2BGR)
-        episode_frames_env.append(env_frame)
+        # Capture pov and env frames from info
+        out_pov.write(cv2.cvtColor(info["vision"], cv2.COLOR_RGB2BGR))
+        out_env.write(cv2.cvtColor(info["environment"], cv2.COLOR_RGB2BGR))
 
         done = terminated or truncated
         if episode_steps % 100 == 0:
@@ -98,19 +93,8 @@ def record_ppo():
     )
     episode_stats.to_csv("./eval/ppo/ppo_episode_stats.csv", index=False)
 
-    # Save pov video
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    out = cv2.VideoWriter("./evals/ppo/ppo_pov_video.mp4", fourcc, 30, (512, 512))
-    for frame in episode_frames_pov:
-        out.write(frame)
-    out.release()
-
-    # Save environment video
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    out = cv2.VideoWriter("./evals/ppo/ppo_env_video.mp4", fourcc, 30, (512, 512))
-    for frame in episode_frames_env:
-        out.write(frame)
-    out.release()
+    out_pov.release()
+    out_env.release()
 
 
 if __name__ == "__main__":
