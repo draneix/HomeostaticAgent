@@ -2,11 +2,9 @@
 import cv2
 import pandas as pd
 import torch
-from skimage.transform import resize
 import numpy as np
 
 from configs.config_ppo import PPOConfig
-from envs.ant_env import HomeostaticAntEnv
 from utils.utils_env import create_env
 from utils.utils_ppo import HomeostaticPPO
 

@@ -376,28 +376,8 @@ class HomeostaticAntEnv(AntEnv, EzPickle):
 
         return img
 
-    def mux_render(self, camera_name):
-        cam_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_CAMERA, camera_name)
-        if cam_id == -1:
-            return self.mujoco_renderer.render(render_mode="rgbd_tuple")
-
-        old_cam_id = self.mujoco_renderer.camera_id
-        self.mujoco_renderer.camera_id = cam_id
-
-        # Adjust lighting based on day/night before rendering
-        # Note that if day_night_cycle_len is 1, it will always be day
-        is_night = (self.current_step % self.cfg.day_night_cycle_len) >= (
-            self.cfg.day_night_cycle_len / 2
-        )
-        if is_night:
-            self.model.light_diffuse[0] = [0.1, 0.1, 0.1]  # Dim the light
-        else:
-            # This is tricky because we don't want to keep multiplying by 0.2
-            # Let's use a fixed value. Default is usually around [0.8, 0.8, 0.8]
-            self.model.light_diffuse[0] = [0.9, 0.9, 0.9]
-
-        viewer = self.mujoco_renderer._get_viewer(render_mode="rgbd_tuple")
-        # Add food, water, and heat
+    def _add_markers(self, render_mode="rgbd_tuple"):
+        viewer = self.mujoco_renderer._get_viewer(render_mode=render_mode)
         for obj in self.object:
             type_gen, x, y = obj
             if type_gen == "food":
@@ -407,14 +387,33 @@ class HomeostaticAntEnv(AntEnv, EzPickle):
             elif type_gen == "heat":
                 viewer.add_marker(pos=(x, y, 0.5), size=(0.5, 0.5, 0.5), rgba=(1, 0, 0, 1), label=" ", type=mujoco.mjtGeom.mjGEOM_SPHERE)
 
-        # Note that rgbd_tuple returns (rgb, depth) which is given by:
-        # RGB: uint8 array of shape (height, width, 3) - this has a range of (0, 255) for each channel
-        # Depth: float32 array of shape (height, width) with depth in meters - this has a range of (0, 1)
-        # Uses Mujoco's depth rendering that it calculates on its own. Closer objects have smaller depth values
+    def mux_render(self, camera_name):
+        cam_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_CAMERA, camera_name)
+        if cam_id == -1:
+            return self.mujoco_renderer.render(render_mode="rgbd_tuple")
+
+        old_cam_id = self.mujoco_renderer.camera_id
+        self.mujoco_renderer.camera_id = cam_id
+
+        # Adjust lighting based on day/night before rendering
+        is_night = (self.current_step % self.cfg.day_night_cycle_len) >= (
+            self.cfg.day_night_cycle_len / 2
+        )
+        if is_night:
+            self.model.light_diffuse[0] = [0.1, 0.1, 0.1]
+        else:
+            self.model.light_diffuse[0] = [0.9, 0.9, 0.9]
+
+        self._add_markers(render_mode="rgbd_tuple")
+
         img = self.mujoco_renderer.render(render_mode="rgbd_tuple")
 
         self.mujoco_renderer.camera_id = old_cam_id
         return img
+
+    def render(self):
+        self._add_markers(render_mode=self.render_mode)
+        return self.mujoco_renderer.render(render_mode=self.render_mode)
 
     def step(self, action):
         # Passive decay/gain
@@ -443,12 +442,12 @@ class HomeostaticAntEnv(AntEnv, EzPickle):
         for obj in list(self.object):
             type_gen, x, y = obj
             if np.linalg.norm(ant_pos - np.array([x, y])) < self.cfg.object_interaction_dist:
-                if type_gen == "food":  # and self._is_in_front(np.array([x, y]))
+                if type_gen == "food" and self._is_in_front(np.array([x, y])):
                     self.hunger += self.cfg.replenish_rate
                     self.food_consumed += 1
                     self.object.append(self._generate_new_object(type_gen))
                     self.object.remove(obj)
-                elif type_gen == "water":  #  and self._is_in_front(np.array([x, y]))
+                elif type_gen == "water" and self._is_in_front(np.array([x, y])):
                     self.thirst += self.cfg.replenish_rate
                     self.water_consumed += 1
                     self.object.append(self._generate_new_object(type_gen))

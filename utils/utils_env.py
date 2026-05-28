@@ -86,7 +86,7 @@ def create_env(config, multiple_env=False):
         env = HomeostaticAntEnv(config)
         env = RecordEpisodeStatistics(env)
         env = RescaleAction(env, 0, 1)
-        if config.frame_stack_key:
+        if hasattr(config, "frame_stack_key") and config.frame_stack_key:
             env = CustomFrameStackObservation(
                 env, 
                 stack_size=config.frame_stack_size, 
