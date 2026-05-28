@@ -13,21 +13,21 @@ from utils.utils_ppo import HomeostaticPPO
 
 def record_ppo():
     # Create environment
-    config = PPOConfig(is_training=False, image_size=(512, 512))
+    config = PPOConfig(is_training=False, image_size=(64, 64))
     env = create_env(config, multiple_env=False)
     obs, info = env.reset()
 
     # Set up model
     print(f"Using device: {config.device}")
     agent = HomeostaticPPO(config).to(config.device)
-    checkpoint = torch.load("models/PPO (30 epochs).pt", map_location=config.device)
+    checkpoint = torch.load("models/ppo_agent_2026-05-28_11-31-51.pt", map_location=config.device)
     agent.load_state_dict(checkpoint)
     agent.eval()
 
     # Set up video recorder
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    out_pov = cv2.VideoWriter("./eval/ppo/ppo_pov_video.mp4", fourcc, 30, (512, 512))
-    out_env = cv2.VideoWriter("./eval/ppo/ppo_env_video.mp4", fourcc, 30, (512, 512))
+    out_pov = cv2.VideoWriter("./eval/ppo/ppo_pov_video.mp4", fourcc, 30, (64, 64))
+    out_env = cv2.VideoWriter("./eval/ppo/ppo_env_video.mp4", fourcc, 30, (64, 64))
 
     episode_reward = []
     episode_food = []
@@ -39,14 +39,14 @@ def record_ppo():
 
     done = False
     while not done and episode_steps < config.max_steps:
-        # Prepare observation
-        vision = np.transpose(obs["vision"], (1, 2, 0))
-        vision = cv2.resize(vision, (64, 64), interpolation=cv2.INTER_AREA)
-        vision = np.transpose(vision, (2, 0, 1))
+        # # Prepare observation
+        # vision = np.transpose(obs["vision"], (1, 2, 0))
+        # vision = cv2.resize(vision, (64, 64), interpolation=cv2.INTER_AREA)
+        # vision = np.transpose(vision, (2, 0, 1))
         # vision = resize(
         #     obs["vision"], (12, 64, 64), anti_aliasing=True, preserve_range=True
         # )
-        vision = torch.from_numpy(vision).unsqueeze(0).to(config.device)
+        vision = torch.from_numpy(obs["vision"]).unsqueeze(0).to(config.device)
         proprioception = (
             torch.from_numpy(obs["proprioception"])
             .unsqueeze(0)
@@ -58,7 +58,7 @@ def record_ppo():
 
         # Get action from agent
         with torch.no_grad():
-            action, _, _, _ = agent(vision, proprioception, internal_state)
+            action, _, _, _ = agent(vision, proprioception, internal_state, deterministic=False)
             action = action.cpu().numpy().squeeze(0)
 
         # Step environment
@@ -78,6 +78,7 @@ def record_ppo():
         done = terminated or truncated
         if episode_steps % 100 == 0:
             print(f"Step: {episode_steps}", end="\r", flush=True)
+    print("\n")
     print("Episode finished")
     env.close()
 
