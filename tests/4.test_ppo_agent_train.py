@@ -12,12 +12,10 @@ def test_agent_training():
     """Test agent with visualization and resource consumption tracking."""
 
     # Setup configs
-    ppo_cfg = PPOConfig()
-    env_cfg = EnvConfig(render_mode="human", image_size=(64, 64), is_training=False)
+    ppo_cfg = PPOConfig(render_mode="human", image_size=(64, 64), is_training=False)
 
     # Create single environment for visualization
-    env = create_env(env_cfg, multiple_env=False)
-
+    env = create_env(ppo_cfg, multiple_env=False)
     # Create agent and replay buffer
     agent = HomeostaticPPO(ppo_cfg)
     agent.to(ppo_cfg.device)
@@ -84,27 +82,13 @@ def test_agent_training():
             cv2.imshow("POV Perspective", pov_bgr)
             cv2.imshow("Global Environment", env_bgr)
 
-            if infos["timestep"] % 100 == 0:
-                print(f"Step: {step_count} | Reward: {rewards:.3f} | Mean Action: {np.abs(actions).mean():.3f}")
-                print(f"Hunger: {infos['hunger']:.3f}, Thirst: {infos['thirst']:.3f}")
+            # Log resource consumption every 100 steps
+            if step_count % 100 == 0:
+                print(f"Step {step_count}/{total_steps} | Episode {episode_count}")
                 print(f"  Food Consumed: {infos['food_consumed']}")
                 print(f"  Water Consumed: {infos['water_consumed']}")
-                print("-" * 30)
-            if infos["food_consumed"] > 0 or infos["water_consumed"] > 0:
-                print(f"Step: {step_count} | Reward: {rewards:.3f} | Mean Action: {np.abs(actions).mean():.3f}")
-                print(f"Hunger: {infos['hunger']:.3f}, Thirst: {infos['thirst']:.3f}")
-                print(f"  Food Consumed: {infos['food_consumed']}")
-                print(f"  Water Consumed: {infos['water_consumed']}")
-                print("-" * 30)
-                break
-
-            # # Log resource consumption every 100 steps
-            # if step_count % 100 == 0:
-            #     print(f"Step {step_count}/{total_steps} | Episode {episode_count}")
-            #     print(f"  Food Consumed: {infos['food_consumed']}")
-            #     print(f"  Water Consumed: {infos['water_consumed']}")
-            #     print(f"  Hunger: {infos['hunger']:.3f}, Thirst: {infos['thirst']:.3f}")
-            #     print(f"  Reward: {rewards:.3f}")
+                print(f"  Hunger: {infos['hunger']:.3f}, Thirst: {infos['thirst']:.3f}")
+                print(f"  Reward: {rewards:.3f}")
 
             # Check for quit
             if cv2.waitKey(1) & 0xFF == ord("q"):

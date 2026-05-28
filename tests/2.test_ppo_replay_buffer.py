@@ -7,7 +7,7 @@ def main():
     env = create_env(PPOConfig(), multiple_env=True)
     replay_buffer = create_replay_buffer(PPOConfig())
     obs, info = env.reset()
-    for _ in range(6000):
+    for _ in range(10):
         actions = env.action_space.sample()
         next_obs, rewards, terminations, truncations, infos = env.step(actions)
         done = terminations | truncations
@@ -18,7 +18,7 @@ def main():
 
     # Sample from replay buffer to validate    batch = replay_buffer.sample()
     print("Sampled batch from replay buffer:")
-    sample_data = replay_buffer.sample()
+    sample_data = replay_buffer.sample(10)
     print(sample_data)
 
     print(f"Validation complete. Finished in {env.get_attr('current_step')}")

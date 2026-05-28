@@ -11,7 +11,7 @@ def main():
     agent.to(cfg.device)
     
     obs, info = env.reset()
-    for _ in range(6000):
+    for _ in range(10):
         actions, log_prob, entropy, value = agent(obs["vision"], obs["proprioception"], obs["internal_state"])
         actions = actions.detach().cpu().numpy()
         log_prob = log_prob.detach().cpu().numpy()
@@ -24,7 +24,7 @@ def main():
 
     # Sample from replay buffer to validate    batch = replay_buffer.sample()
     print("Sampled batch from replay buffer:")
-    sample_data = replay_buffer.sample()
+    sample_data = replay_buffer.sample(10)
     print(sample_data)
 
     print(f"Validation complete. Finished in {env.get_attr('current_step')}")
