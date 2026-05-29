@@ -442,12 +442,12 @@ class HomeostaticAntEnv(AntEnv, EzPickle):
         for obj in list(self.object):
             type_gen, x, y = obj
             if np.linalg.norm(ant_pos - np.array([x, y])) < self.cfg.object_interaction_dist:
-                if type_gen == "food" and self._is_in_front(np.array([x, y])):
+                if type_gen == "food":  # and self._is_in_front(np.array([x, y])):
                     self.hunger += self.cfg.replenish_rate
                     self.food_consumed += 1
                     self.object.append(self._generate_new_object(type_gen))
                     self.object.remove(obj)
-                elif type_gen == "water" and self._is_in_front(np.array([x, y])):
+                elif type_gen == "water":  # and self._is_in_front(np.array([x, y])):
                     self.thirst += self.cfg.replenish_rate
                     self.water_consumed += 1
                     self.object.append(self._generate_new_object(type_gen))
