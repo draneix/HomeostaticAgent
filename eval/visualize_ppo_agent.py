@@ -2,10 +2,9 @@ import cv2
 import numpy as np
 import torch
 
-from configs.config_env import EnvConfig
 from configs.config_ppo import PPOConfig
 from utils.utils_env import create_env
-from utils.utils_ppo import create_replay_buffer, add_to_replay_buffer, HomeostaticPPO
+from utils.utils_ppo import HomeostaticPPO
 
 
 def test_agent_training():
