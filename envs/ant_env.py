@@ -442,12 +442,12 @@ class HomeostaticAntEnv(AntEnv, EzPickle):
         for obj in list(self.object):
             type_gen, x, y = obj
             if np.linalg.norm(ant_pos - np.array([x, y])) < self.cfg.object_interaction_dist:
-                if type_gen == "food":  # and self._is_in_front(np.array([x, y])):
+                if type_gen == "food" and self._is_in_front(np.array([x, y])):
                     self.hunger += self.cfg.replenish_rate
                     self.food_consumed += 1
                     self.object.append(self._generate_new_object(type_gen))
                     self.object.remove(obj)
-                elif type_gen == "water":  # and self._is_in_front(np.array([x, y])):
+                elif type_gen == "water" and self._is_in_front(np.array([x, y])):
                     self.thirst += self.cfg.replenish_rate
                     self.water_consumed += 1
                     self.object.append(self._generate_new_object(type_gen))
@@ -615,11 +615,11 @@ class HomeostaticAntEnv(AntEnv, EzPickle):
         # 2. Vector from Ant to Resource (ignore Z for a flat arena check)
         target_vec = target_pos - ant_pos
 
-        # 3. Normalize the target vector
-        dist = np.linalg.norm(target_vec)
-        if dist < 1e-6:
-            return True  # If touching, count as in front
-        target_vec /= dist
+        # # 3. Normalize the target vector
+        # dist = np.linalg.norm(target_vec)
+        # if dist < 1e-6:
+        #     return True  # If touching, count as in front
+        # target_vec /= dist
 
         # 4. Dot product check
         dot_product = np.dot(forward_vec[:2], target_vec[:2])
